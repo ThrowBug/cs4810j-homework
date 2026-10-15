@@ -1,0 +1,30 @@
+name: Count Recently Created Pages
+setup_function: login_to_bookstack
+steps:
+- action: Click on my profile icon
+  expectation: A dropdown with profile options with 'View Profile' appears
+  action_check: |
+    expect(page.get_by_role("link", name="View Profile")).to_be_visible()
+  url: /
+  solution: |
+    page.get_by_label("Profile Menu").get_by_role("img", name="Admin").click()
+
+- action: Click on 'View Profile' option
+  expectation: A profile card with 'Created Content' is shown
+  action_check: |
+    expect(page.get_by_text("Created Content")).to_be_visible()
+  url: /user/admin
+  solution: |
+    page.get_by_role("link", name="View Profile").click()
+
+- action: Click 'View All' to the right of 'Recently Created Pages'
+  expectation: The user's created pages is consistent with the previous 'Created Content' count
+  action_check: |
+    expect(page.get_by_role("heading", name="Search Results")).to_be_visible()
+  url: /search?term=%7Bcreated_by%3Aadmin%7D+%7Btype%3Apage%7D
+  solution: |
+    page.locator("#recent-pages").get_by_role("link", name="View All").click()
+
+assertion_check: |
+  # 'Created Content' counted 6 pages: the search for the user's pages finds exactly 6.
+  expect(page.locator(".book-contents .entity-list .entity-list-item")).to_have_count(6)

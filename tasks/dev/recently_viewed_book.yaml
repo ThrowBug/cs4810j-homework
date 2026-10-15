@@ -1,0 +1,30 @@
+name: Recently Viewed Book
+setup_function: login_to_bookstack
+steps:
+- action: From the dashboard click "Books" link in navigation
+  expectation: Page with title 'Books' is shown
+  action_check: |
+    expect(page.get_by_role("heading", name="Books", exact=True)).to_be_visible()
+  url: /books
+  solution: |
+    page.get_by_role("link", name="Books", exact=True).click()
+
+- action: Click on book title "Book2"
+  expectation: Page with title 'Book2' is shown
+  action_check: |
+    expect(page.get_by_role("heading", name="Book2")).to_be_visible()
+  url: /books/book2
+  solution: |
+    page.get_by_role("link", name="Book2 Description Created").click()
+
+- action: Click on the Bookstack logo top left of navbar
+  expectation: The 'Book2' item appears at the top of the "My Recently Viewed" list, whether it was already present or newly added. All other items retain their previous order
+  action_check: |
+    expect(page.locator("#recently-viewed")).to_contain_text("Book2 Description")
+  url: /
+  solution: |
+    page.get_by_role("link", name="Logo BookStack").click()
+
+assertion_check: |
+  # 'Book2' moved to the top; every other item keeps its order.
+  expect(page.locator("#recently-viewed .entity-list-item-name")).to_have_text(["Book2", "Shelf", "Page 1", "Book1", "Chapter 2", "Page", "Book", "Page Template", "Page 1", "Page", "Page 2", "Chapter 2"])

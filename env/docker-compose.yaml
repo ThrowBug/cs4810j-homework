@@ -1,0 +1,47 @@
+# BookStack for the homework, adapted from WebTestPilot-benchmark bookstack/environment.
+# Differences: no in-compose browser or seed-loader (the harness does login, bug injection
+# and per-run database resets), port 8080 published, APP_URL points at localhost.
+name: gui-agent-homework
+services:
+  webapp:
+    image: solidnerd/bookstack:25.2.1
+    platform: linux/amd64
+    ports:
+      - "8080:8080"
+    environment:
+      - TZ=Etc/UTC
+      - APP_URL=http://localhost:8080
+      - APP_KEY=base64:F4hZhDJ4XTPq2i11SejFCd3DzLa7ARzVUo5+q4PN9og=
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USERNAME=admin
+      - DB_PASSWORD=admin
+      - DB_DATABASE=bookstack
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/login"]
+      interval: 2s
+      timeout: 5s
+      retries: 90
+      start_period: 60s
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.4
+    environment:
+      - MYSQL_DATABASE=bookstack
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=admin
+      - MYSQL_ROOT_PASSWORD=root
+    volumes:
+      - db:/var/lib/mysql
+      - ./baseline.sql:/docker-entrypoint-initdb.d/00-baseline.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uadmin", "-padmin"]
+      interval: 2s
+      timeout: 5s
+      retries: 25
+
+volumes:
+  db:

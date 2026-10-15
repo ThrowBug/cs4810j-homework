@@ -1,0 +1,30 @@
+name: Search
+setup_function: login_to_bookstack
+steps:
+- action: Click on search icon button
+  expectation: Search results page appear with 'Update Search' button
+  action_check: |
+    expect(page.get_by_role("heading", name="Search Results")).to_be_visible()
+  url: /search?term=
+  solution: |
+    page.get_by_role("button", name="Search").click()
+
+- action: Click on 'Books' link in navigation
+  expectation: Books listing page is shown
+  action_check: |
+    expect(page.get_by_role("heading", name="Books", exact=True)).to_be_visible()
+  url: /books
+  solution: |
+    page.get_by_role("link", name="Books", exact=True).click()
+
+- action: Click on book title 'Book2'
+  expectation: The chapters and pages in 'Book2' is consistent with previous search results
+  action_check: |
+    expect(page.get_by_role("heading", name="Book2")).to_be_visible()
+  url: /books/book2
+  solution: |
+    page.get_by_role("link", name="Book2 Description Created").click()
+
+assertion_check: |
+  # Book2 holds exactly the chapters and pages the search found.
+  expect(page.locator("main .entity-list-item-name")).to_have_text(["Chapter 1", "Chapter 2", "Page 1"])
