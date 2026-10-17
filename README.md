@@ -9,7 +9,7 @@ Every test case runs twice:
 | `clean` | works as intended | **PASS** |
 | `bug` | has a bug injected into the page (an item missing, a wrong value, a duplicate, ...) | **FAIL** |
 
-A test passes when the agent's verdict is correct. The baseline agent is slow, uses many tokens, and does not always reach a verdict. **Your job is to build an agent that does better on these metrics:**
+A test passes when the agent's verdict is correct. The baseline agent is slow, uses many tokens, and misses most bugs. **Your job is to build an agent that does better on these metrics:**
 
 | Metric | Meaning | Goal |
 | --- | --- | --- |
@@ -40,7 +40,7 @@ uv run install.py
 ```ini
 OPENAI_API_KEY=sk-or-...
 OPENAI_BASE_URL=https://openrouter.ai/api/v1
-LLM_MODEL=qwen/qwen3.8-flash
+LLM_MODEL=deepseek/deepseek-v4.1-flash
 LLM_REASONING_EFFORT=low
 ```
 
@@ -50,7 +50,7 @@ LLM_REASONING_EFFORT=low
 uv run pytest
 ```
 
-This runs the baseline agent (`agents/baseline.py`) on all 8 tests: 4 test cases × 2 variants. It takes about 15 minutes. The first run also downloads BookStack and MySQL (about 1 GB) and starts them on http://localhost:8080. To try a single test case first, select it with pytest's `-k`: `uv run pytest -k search`.
+This runs the baseline agent (`agents/baseline.py`) on all 8 tests: 4 test cases × 2 variants. It takes about 13 minutes. The first run also downloads BookStack and MySQL (about 1 GB) and starts them on http://localhost:8080. To try a single test case first, select it with pytest's `-k`: `uv run pytest -k search`.
 
 Before each test, the harness resets BookStack's database, opens a browser and logs in, and for `bug` tests injects the bug. Then it hands the browser to the agent.
 
@@ -58,29 +58,29 @@ When the run finishes, pytest prints the metrics. The baseline's run:
 
 ```
 test                                       verdict  correct   seconds    tokens  calls
-count_recently_created_pages[clean]        PASS     yes          50.3    64,647      5
-count_recently_created_pages[bug]          FAIL     yes          50.6    52,857      4
-create_book[clean]                         ERROR    NO          201.2    91,405      7
-create_book[bug]                           FAIL     yes         219.2   171,941     13
-recently_viewed_book[clean]                PASS     yes          54.4    52,362      4
-recently_viewed_book[bug]                  ERROR    NO          261.1    50,326      4
-search[clean]                              PASS     yes          51.9    51,982      5
-search[bug]                                FAIL     yes          62.7    53,493      4
+count_recently_created_pages[clean]        PASS     yes          14.2    31,386      4
+count_recently_created_pages[bug]          PASS     NO          180.1   145,423     13
+create_book[clean]                         PASS     yes          46.5    77,837     10
+create_book[bug]                           FAIL     yes          37.7    47,934      6
+recently_viewed_book[clean]                PASS     yes          34.7    31,063      4
+recently_viewed_book[bug]                  PASS     NO          108.8    48,568      5
+search[clean]                              PASS     yes          33.9    40,083      5
+search[bug]                                PASS     NO          279.2   211,978     19
 
-metric                baseline (baseline-20261017-113803)
+metric                baseline (baseline-20261017-124305)
 ---------------------------------------------------------
-Accuracy                                             0.75
-Bug recall                                           0.75
+Accuracy                                             0.62
+Bug recall                                           0.25
 False alarm rate                                     0.00
-Errors                                                  2
-Seconds per test                                    118.9
-Tokens per test                                    73,627
-LLM calls per test                                    5.8
-Total seconds                                         951
-Total tokens                                      589,013
+Errors                                                  0
+Seconds per test                                     91.9
+Tokens per test                                    79,284
+LLM calls per test                                    8.2
+Total seconds                                         735
+Total tokens                                      634,272
 
-Test report: reports/baseline-20261017-113803/report.html
-Metrics again, or compared with another run: uv run metrics.py reports/baseline-20261017-113803
+Test report: reports/baseline-20261017-124305/report.html
+Metrics again, or compared with another run: uv run metrics.py reports/baseline-20261017-124305
 ```
 
 Each run writes a folder `reports/<agent>-<date>-<time>/`:
@@ -93,7 +93,7 @@ Each run writes a folder `reports/<agent>-<date>-<time>/`:
 | `<test>/conversation/` | every prompt sent to the LLM and its reply |
 | `results.json` | the numbers behind the metrics |
 
-Look at a few tests in the report before you change anything. Where do the time and tokens go? For each test the baseline got wrong, what went wrong?
+Look at a few tests in the report before you change anything. Where do the time and tokens go? For each bug the baseline missed, what did it see, and why did it still say PASS?
 
 ## Step 3: Improve the agent
 
