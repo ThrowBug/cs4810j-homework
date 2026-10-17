@@ -3,6 +3,7 @@
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Awaitable, Callable
 
 import httpx
 from browser_use import ChatOpenAI
@@ -35,6 +36,12 @@ class Context:
 	out_dir: Path  # this run's folder: put logs, screenshots and GIFs here
 	memory_dir: Path  # persists across runs and tasks: for memory, caches, RAG indexes
 	meter: Meter
+	mark: Callable[[str], Awaitable[None]] | None = None
+
+	async def trace_step(self, title: str) -> None:
+		"""Add a named step, with a snapshot of the current page, to this test's Playwright trace."""
+		if self.mark:
+			await self.mark(title)
 
 	def llm(self, model: str | None = None) -> ChatOpenAI:
 		"""An LLM on the course endpoint whose usage is counted. Use only LLMs made here.
@@ -58,11 +65,17 @@ class Context:
 			meter.completion_tokens += usage.get('completion_tokens', 0)
 			meter.by_model[name] = meter.by_model.get(name, 0) + usage.get('total_tokens', 0)
 
+		# Reasoning models spend hidden "thinking" tokens before answering; LLM_REASONING_EFFORT
+		# (minimal / low / medium / high) caps that. Leave it empty to use the provider's default.
+		effort = os.getenv('LLM_REASONING_EFFORT', 'low').strip()
+		reasoning = {'reasoning_models': [name], 'reasoning_effort': effort} if effort else {}
 		return ChatOpenAI(
 			model=name,
 			api_key=os.environ['OPENAI_API_KEY'],
 			base_url=os.getenv('OPENAI_BASE_URL') or None,
 			dont_force_structured_output=no_structured,
 			add_schema_to_system_prompt=no_structured,
+			max_completion_tokens=8192,
 			http_client=httpx.AsyncClient(timeout=300, event_hooks={'response': [count_usage]}),
+			**reasoning,
 		)

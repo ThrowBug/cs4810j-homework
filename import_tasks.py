@@ -5,7 +5,7 @@
 
 By default it imports every BookStack scenario that is not in the dev set and has a bug
 script. Check the new set with:  uv run oracle_check.py --tasks holdout
-Then grade with:  uv run evaluate.py --agent <student> --tasks holdout
+Then grade with:  uv run pytest --agent <student> --task-set holdout
 """
 
 import argparse

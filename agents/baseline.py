@@ -40,6 +40,9 @@ EXCLUDED_TOOLS = ['search', 'navigate', 'search_page', 'find_elements', 'save_as
 
 
 async def run_test(task: Task, ctx: Context) -> Verdict:
+	async def on_step(state, output, step_number):  # names each step in the Playwright trace
+		await ctx.trace_step(f'Step {step_number}: {output.next_goal}')
+
 	browser = BrowserSession(cdp_url=ctx.cdp_url)
 	agent = Agent(
 		task=build_prompt(task),
@@ -51,6 +54,7 @@ async def run_test(task: Task, ctx: Context) -> Verdict:
 		directly_open_url=False,  # the harness already opened the start page
 		max_failures=3,
 		final_response_after_failure=False,  # a crashed run must not produce a guessed verdict
+		register_new_step_callback=on_step,
 		save_conversation_path=ctx.out_dir / 'conversation',
 		generate_gif=str(ctx.out_dir / 'agent.gif'),
 	)

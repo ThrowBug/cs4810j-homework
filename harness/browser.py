@@ -1,6 +1,7 @@
 """Prepare the browser an agent receives, following WebTestPilot-benchmark runtime/init.py:
 launch Chromium, run the task's login, optionally inject the task's bug, reload, and only
-then hand the browser to the agent over CDP.
+then hand the browser to the agent over CDP. While the agent runs, Playwright records a trace
+(screenshots, DOM snapshots, network) that opens in trace.playwright.dev.
 
 The Playwright connection stays open while the agent runs, because the injected bug is a
 Playwright init script that must keep firing on every navigation.
@@ -11,7 +12,7 @@ import socket
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncIterator
+from typing import AsyncIterator, Awaitable, Callable, NamedTuple
 
 from playwright.async_api import Page, async_playwright
 
@@ -48,9 +49,14 @@ def _free_port() -> int:
 		return s.getsockname()[1]
 
 
+class Handover(NamedTuple):
+	cdp_url: str  # where the agent attaches
+	mark: Callable[[str], Awaitable[None]]  # add a named step, with a page snapshot, to the trace
+
+
 @asynccontextmanager
-async def prepared_browser(setup_function: str | None, bug_script: Path | None, headless: bool) -> AsyncIterator[str]:
-	"""Yield a CDP URL for a logged-in browser on the start page, with the bug active if given."""
+async def prepared_browser(setup_function: str | None, bug_script: Path | None, headless: bool, trace_path: Path | None = None) -> AsyncIterator[Handover]:
+	"""Yield a Handover for a logged-in browser on the start page, with the bug active if given."""
 	port = _free_port()
 	async with async_playwright() as p:
 		with tempfile.TemporaryDirectory(prefix='gui-agent-') as profile:
@@ -79,6 +85,27 @@ async def prepared_browser(setup_function: str | None, bug_script: Path | None, 
 					await page.wait_for_load_state('networkidle', timeout=30_000)
 				except Exception:
 					pass
-				yield f'http://127.0.0.1:{port}'
+				if trace_path:
+					await context.tracing.start(screenshots=True, snapshots=True)
+
+				async def mark(title: str) -> None:
+					# The agent acts over CDP, so Playwright sees no actions of its own. A group with
+					# one cheap page call gives the trace viewer a named step with a DOM snapshot.
+					if not trace_path or not context.pages:
+						return
+					await context.tracing.group(title)
+					try:
+						await context.pages[-1].evaluate('() => document.title')
+					except Exception:
+						pass  # the page may be navigating; the step name is still recorded
+					finally:
+						await context.tracing.group_end()
+
+				yield Handover(f'http://127.0.0.1:{port}', mark)
 			finally:
+				if trace_path:
+					try:
+						await context.tracing.stop(path=trace_path)
+					except Exception:
+						pass  # tracing never started, e.g. login failed
 				await context.close()

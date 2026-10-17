@@ -1,9 +1,14 @@
 [project]
 name = "gui-agent-homework"
 version = "0.1.0"
-description = "Homework: build a cheaper GUI testing agent with browser-use"
+description = "Homework: improve a GUI testing agent built on browser-use"
 requires-python = ">=3.11"
-dependencies = ["browser-use==0.13.11", "playwright==1.57.0", "pyyaml"]
+dependencies = ["browser-use==0.13.11", "playwright==1.57.0", "pytest", "pytest-html", "pyyaml"]
 
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-v --tb=line -p no:cacheprovider"

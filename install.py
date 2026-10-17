@@ -25,4 +25,4 @@ except (OSError, subprocess.CalledProcessError):
 	print('Docker is not available or not running. Install Docker Desktop (Windows, macOS) or Docker Engine (Linux) and start it.')
 	sys.exit(1)
 
-print('\nSetup complete. Next: uv run evaluate.py --agent baseline --only search')
+print('\nSetup complete. Put your API key in .env, then run: uv run pytest -k search')
